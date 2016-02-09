@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
 Python functionality for manipulating a Kconfig .config file.
