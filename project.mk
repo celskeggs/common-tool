@@ -17,18 +17,11 @@
 PWD := $(shell pwd)
 KERNEL_ROOT_PATH := ${PWD}/kernel
 COMMON_PATH := ${PWD}/tools/common
-SEL4_LIBS_PATH = ${PWD}/libs
-SEL4_APPS_PATH = ${PWD}/apps
 DATA_PATH = ${PWD}/data
 KMAKE_FLAGS = $(COMMON_PATH)/Makefile.flags
 AUTOCONF_H_FILE := include/generated/autoconf.h
 
-ifeq ($(lib-dirs),)
-    lib-dirs:=libs
-    old-kbuild-hack:=1
-endif
-
-export KERNEL_ROOT_PATH COMMON_PATH SEL4_LIBS_PATH SEL4_APPS_PATH DATA_PATH
+export KERNEL_ROOT_PATH COMMON_PATH DATA_PATH
 
 export BUILD_ROOT=${PWD}/build
 
@@ -112,9 +105,6 @@ export srctree objtree src obj
 KERNEL_ROOT_PATH = $(srctree)/kernel
 COMMON_PATH = $(srctree)/tools/common
 TOOLS_ROOT = $(srctree)/tools
-APPS_ROOT = $(srctree)/apps
-SEL4_LIBS_PATH = $(srctree)/libs
-SEL4_APPS_PATH = $(srctree)/apps
 KMAKE_FLAGS = $(COMMON_PATH)/Makefile.flags
 
 export COMMON_PATH
@@ -212,14 +202,7 @@ config: gen_makefile scripts_basic
 .config: ;
 
 include $(KMAKE_FLAGS)
-ifeq ($(old-kbuild-hack), 1)
-    include $(SEL4_LIBS_PATH)/Kbuild
-else
-    include Kbuild
-endif
 
-libs = $(libs-y)
-apps = $(apps-y)
 components = $(components-y)
 
 $(AUTOCONF_H_FILE): .config
@@ -273,37 +256,6 @@ endif
 ifeq ($(ARCH),x86)
 include $(COMMON_PATH)/project-ia32.mk
 endif
-
-
-PHONY += $(libs)
-$(libs): lib=$(shell for lib in $(lib-dirs); do \
-	if [ -e "$(srctree)/$${lib}/$@/Makefile" ] ; then \
-		echo "$${lib}"; \
-		break; \
-	fi; \
-	done)
-$(libs):
-	@if [ "$(lib)" = "" ] ; then echo "Unable to find library $@ in any of the library directories: $(lib-dirs)"; false; fi
-	@echo "[$(lib)/$@] building..."
-	$(Q)mkdir -p $(BUILD_BASE)/$@
-	$(Q)CFLAGS= LDFLAGS= $(MAKE) $(MAKE_SILENT) -C $(BUILD_BASE)/$@ -f $(srctree)/.config -f $(srctree)/$(lib)/$@/Makefile \
-		BUILD_DIR=$(BUILD_BASE)/$@ SOURCE_DIR=$(srctree)/$(lib)/$@ V=$(V) \
-		STAGE_DIR=$(STAGE_BASE) \
-		TOOLPREFIX=$(CONFIG_CROSS_COMPILER_PREFIX:"%"=%)
-	@echo "[libs/$@] done."
-
-PHONY += app-images
-app-images: $(patsubst %,%-image,$(apps))
-
-PHONY += $(apps) $(components)
-$(apps) $(components): common
-	@echo "[apps/$@] building..."
-	$(Q)mkdir -p $(BUILD_BASE)/$@
-	$(Q)CFLAGS= LDFLAGS= $(MAKE) $(MAKE_SILENT) -C $(BUILD_BASE)/$@ -f $(srctree)/.config -f $(APPS_ROOT)/$@/Makefile \
-		BUILD_DIR=$(BUILD_BASE)/$@ SOURCE_DIR=$(APPS_ROOT)/$@ V=$(V) \
-		STAGE_DIR=$(STAGE_BASE) \
-		TOOLPREFIX=$(CONFIG_CROSS_COMPILER_PREFIX:"%"=%)
-	@echo "[apps/$@] done."
 
 PHONY += clean
 clean:
